@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Generator - Create Videos from Keywords</title>
+    <meta name="description" content="Generate amazing videos from keywords using AI - script generation, image creation, and audio narration all in one tool">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="header-title">
+                    <span class="gradient-text">AI Video Generator</span>
+                </h1>
+                <p class="header-subtitle">
+                    Transform your keywords into stunning videos with AI-powered script generation, image creation, and audio narration
+                </p>
+                <div class="flux-badge">
+                    <span class="flux-icon">⚡</span>
+                    <span>Powered by Flux Model</span>
+                    <span class="flux-description">High-quality AI image generation</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Input Section -->
+            <section class="input-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">🎬 Start Creating</h2>
+                        <p class="card-description">Enter keywords to generate your video content</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="input-group">
+                            <label for="keywords" class="input-label">Keywords</label>
+                            <textarea 
+                                id="keywords" 
+                                class="input-field" 
+                                placeholder="Enter keywords separated by commas (e.g., space exploration, future technology, artificial intelligence)"
+                                rows="3"
+                                maxlength="500"
+                            ></textarea>
+                            <div class="input-hint">Tip: Use descriptive keywords for better results</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration Section -->
+            <section class="config-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">⚙️ Configuration</h2>
+                        <p class="card-description">Customize your video settings</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="config-grid">
+                            <div class="config-group">
+                                <label for="imageSize" class="config-label">Flux Model Image Size</label>
+                                <select id="imageSize" class="config-select">
+                                    <option value="1024x1024">Square (1024x1024) - Optimal for Flux</option>
+                                    <option value="1280x720" selected>Landscape (1280x720) - Optimal for Flux</option>
+                                    <option value="720x1280">Portrait (720x1280) - Optimal for Flux</option>
+                                    <option value="1152x896">Wide (1152x896) - Flux Enhanced</option>
+                                    <option value="896x1152">Tall (896x1152) - Flux Enhanced</option>
+                                </select>
+                                <small class="flux-info">✨ All dimensions optimized for Flux model quality</small>
+                            </div>
+                            
+                            <div class="config-group">
+                                <label for="fluxQuality" class="config-label">Flux Quality Settings</label>
+                                <select id="fluxQuality" class="config-select">
+                                    <option value="high" selected>High Quality (Enhanced + Safe)</option>
+                                    <option value="standard">Standard Quality (Safe)</option>
+                                </select>
+                                <small class="flux-info">🎨 Flux model enhancement for superior image quality</small>
+                            </div>
+                            <div class="config-group">
+                                <label for="voiceSelect" class="config-label">Voice</label>
+                                <select id="voiceSelect" class="config-select">
+                                    <option value="nova" selected>Nova (Female)</option>
+                                    <option value="alloy">Alloy (Male)</option>
+                                    <option value="echo">Echo (Male)</option>
+                                    <option value="fable">Fable (British)</option>
+                                    <option value="onyx">Onyx (Deep)</option>
+                                    <option value="shimmer">Shimmer (Soft)</option>
+                                </select>
+                            </div>
+                            <div class="config-group">
+                                <label for="videoDuration" class="config-label">Video Duration</label>
+                                <select id="videoDuration" class="config-select">
+                                    <option value="31">31 seconds</option>
+                                    <option value="60" selected>1 minute</option>
+                                </select>
+                            </div>
+                            <div class="config-group">
+                                <label for="imageCount" class="config-label">Number of Images</label>
+                                <select id="imageCount" class="config-select">
+                                    <option value="3">3 images</option>
+                                    <option value="5" selected>5 images</option>
+                                    <option value="7">7 images</option>
+                                    <option value="10">10 images</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Generation Controls -->
+            <section class="controls-section">
+                <div class="card">
+                    <div class="card-content">
+                        <div class="controls-grid">
+                            <button id="generateScript" class="btn btn-primary" disabled>
+                                <span class="btn-icon">📝</span>
+                                Generate Script
+                            </button>
+                            <button id="generateImages" class="btn btn-secondary" disabled>
+                                <span class="btn-icon">🖼️</span>
+                                Generate Images
+                            </button>
+                            <button id="generateAudio" class="btn btn-secondary" disabled>
+                                <span class="btn-icon">🎵</span>
+                                Generate Audio
+                            </button>
+                            <button id="createVideo" class="btn btn-success" disabled>
+                                <span class="btn-icon">🎬</span>
+                                Create Video
+                            </button>
+                        </div>
+                        <div class="quick-actions">
+                            <button id="generateAll" class="btn btn-gradient" disabled>
+                                <span class="btn-icon">✨</span>
+                                Generate Everything
+                            </button>
+                            <button id="resetAll" class="btn btn-outline">
+                                <span class="btn-icon">🔄</span>
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Progress Section -->
+            <section class="progress-section" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">📊 Progress</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="progress-item">
+                            <div class="progress-label">
+                                <span class="progress-icon">📝</span>
+                                <span>Script Generation</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="scriptProgress"></div>
+                            </div>
+                            <div class="progress-status" id="scriptStatus">Waiting...</div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">
+                                <span class="progress-icon">🖼️</span>
+                                <span>Image Generation</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="imageProgress"></div>
+                            </div>
+                            <div class="progress-status" id="imageStatus">Waiting...</div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">
+                                <span class="progress-icon">🎵</span>
+                                <span>Audio Generation</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="audioProgress"></div>
+                            </div>
+                            <div class="progress-status" id="audioStatus">Waiting...</div>
+                        </div>
+                        <div class="progress-item">
+                            <div class="progress-label">
+                                <span class="progress-icon">🎬</span>
+                                <span>Video Creation</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="videoProgress"></div>
+                            </div>
+                            <div class="progress-status" id="videoStatus">Waiting...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Preview Section -->
+            <section class="preview-section">
+                <div class="preview-grid">
+                    <!-- Script Preview -->
+                    <div class="preview-card" id="scriptPreview" style="display: none;">
+                        <div class="preview-header">
+                            <h3 class="preview-title">📝 Generated Script</h3>
+                            <button class="preview-action" id="editScript">Edit</button>
+                        </div>
+                        <div class="preview-content">
+                            <div class="script-content" id="scriptContent"></div>
+                        </div>
+                    </div>
+
+                    <!-- Images Preview -->
+                    <div class="preview-card" id="imagesPreview" style="display: none;">
+                        <div class="preview-header">
+                            <h3 class="preview-title">🖼️ Generated Images</h3>
+                            <span class="preview-count" id="imageCount">0 images</span>
+                        </div>
+                        <div class="preview-content">
+                            <div class="images-grid" id="imagesGrid"></div>
+                        </div>
+                    </div>
+
+                    <!-- Audio Preview -->
+                    <div class="preview-card" id="audioPreview" style="display: none;">
+                        <div class="preview-header">
+                            <h3 class="preview-title">🎵 Generated Audio</h3>
+                            <span class="preview-duration" id="audioDuration">0:00</span>
+                        </div>
+                        <div class="preview-content">
+                            <div class="audio-player">
+                                <audio id="audioPlayer" controls style="width: 100%;">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Video Result Section -->
+            <section class="result-section" id="resultSection" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">🎬 Your Video is Ready!</h2>
+                        <p class="card-description">Preview and download your generated video</p>
+                    </div>
+                    <div class="card-content">
+                        <div class="video-container">
+                            <video id="finalVideo" controls class="video-player">
+                                Your browser does not support the video element.
+                            </video>
+                        </div>
+                        <div class="video-actions">
+                            <button id="downloadVideo" class="btn btn-success">
+                                <span class="btn-icon">⬇️</span>
+                                Download Video
+                            </button>
+                            <button id="shareVideo" class="btn btn-outline">
+                                <span class="btn-icon">📤</span>
+                                Share
+                            </button>
+                            <button id="createAnother" class="btn btn-primary">
+                                <span class="btn-icon">➕</span>
+                                Create Another
+                            </button>
+                        </div>
+                        <div class="video-info">
+                            <div class="info-item">
+                                <span class="info-label">Duration:</span>
+                                <span class="info-value" id="videoDurationInfo">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Size:</span>
+                                <span class="info-value" id="videoSizeInfo">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Format:</span>
+                                <span class="info-value">MP4</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Error Messages -->
+            <div id="errorContainer" class="error-container" style="display: none;">
+                <div class="error-message">
+                    <span class="error-icon">⚠️</span>
+                    <span class="error-text" id="errorText"></span>
+                    <button class="error-close" id="closeError">×</button>
+                </div>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text" id="loadingText">Processing...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p class="footer-text">
+                    Powered by <a href="https://pollinations.ai" target="_blank" rel="noopener">Pollinations.AI</a> | 
+                    Free AI content generation
+                </p>
+                <div class="footer-links">
+                    <a href="#" class="footer-link">About</a>
+                    <a href="#" class="footer-link">Privacy</a>
+                    <a href="#" class="footer-link">Terms</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="video-generator.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
