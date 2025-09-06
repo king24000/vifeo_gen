@@ -58,14 +58,8 @@ class VideoGeneratorApp {
             const urlWithKey = `${url}${separator}apiKey=${apiKey}`;
             
             console.log('Using CORS-friendly approach for Pollinations.ai URL');
-            
-            // Use a proxy server to avoid CORS issues
-            // This is a workaround for the CORS issue with Pollinations.ai
-            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(urlWithKey);
-            console.log('Using proxy URL:', proxyUrl);
-            
             return {
-                url: proxyUrl,
+                url: urlWithKey,
                 headers: {
                     // Only include headers that don't trigger preflight
                     'Referer': 'king.com'
@@ -373,171 +367,35 @@ class VideoGeneratorApp {
      * - Reproducible results with seed parameter
      */
     async generateSingleImage(prompt, width, height, seed) {
-        // Validate Flux model usage
-        if (!this.validateFluxDimensions(width, height)) {
-            console.warn(`Non-optimal dimensions for Flux model: ${width}x${height}. Using recommended dimensions.`);
-            const optimalDims = this.getOptimalFluxDimensions(width, height);
-            width = optimalDims.width;
-            height = optimalDims.height;
-            console.log(`Adjusted dimensions to: ${width}x${height}`);
-        }
-        
-        // Check if this is a portrait image request
-        const isPortrait = height > width;
-        if (isPortrait) {
-            console.log('Generating portrait image with dimensions:', width, 'x', height);
-        }
-        
-        const imagePrompt = encodeURIComponent(prompt);
-        const model = this.fluxConfig.model; // Enforced Flux model
-        const quality = this.fluxConfig.quality || 'best'; // Use best quality by default
-        const nologo = this.fluxConfig.nologo ? 'true' : 'false'; // Remove logo if configured
-        
-        // Use the correct endpoint format for Flux model with authentication
-        const imageUrl = `https://pollinations.ai/api/image/prompt/${imagePrompt}?width=${width}&height=${height}&seed=${seed}&model=${model}&quality=${quality}&nologo=${nologo}`;
-        
-        // Add authentication headers for image loading
-        const authHeaders = {
-            'X-API-Key': '_22aeaFs0yl2hh1G',
-            'Referer': 'king.com'
-        };
-        
-        console.log('Generating image with URL:', imageUrl);
-        
-        // Implement retry logic for material processing
-        const maxRetries = 3;
-        let retryCount = 0;
-        let lastError = null;
-        
-        while (retryCount < maxRetries) {
+        // Sanitize the prompt before sending it to the API
+        const cleaned = this.cleanPrompt(prompt);
+        const model = this.fluxConfig?.model || 'flux';
+
+        // Construct a list of endpoints to try in order of preference.
+        // The first endpoint uses the selected model with best quality and dimensions specified by the caller.
+        // The second endpoint falls back to the turbo model if the first fails.
+        // The third endpoint omits model and dimension parameters entirely as a last resort.
+        const endpoints = [
+            `https://image.pollinations.ai/prompt/${encodeURIComponent(cleaned)}?width=${width}&height=${height}&seed=${seed}&model=${model}&quality=best&nologo=true`,
+            `https://image.pollinations.ai/prompt/${encodeURIComponent(cleaned)}?width=${width}&height=${height}&seed=${seed}&model=turbo&nologo=true`,
+            `https://image.pollinations.ai/prompt/${encodeURIComponent(cleaned)}?seed=${seed}`
+        ];
+
+        // Iterate through the endpoints and return the first one that responds successfully.
+        for (let endpoint of endpoints) {
             try {
-                // If this is a retry, log the attempt
-                if (retryCount > 0) {
-                    console.log(`Retry attempt ${retryCount}/${maxRetries} for image generation...`);
-                    // Update progress with retry information
-                    this.updateProgress('image', 'processing', `Retry ${retryCount}/${maxRetries} for image ${seed + 1}...`);
+                const response = await fetch(endpoint);
+                if (response.ok) {
+                    // If the API responded successfully, return the endpoint URL for direct image loading.
+                    return endpoint;
                 }
-                
-                // Test if image loads with Flux-specific error handling
-                const result = await new Promise((resolve, reject) => {
-                    // First try to fetch the image with authentication headers
-                    fetch(imageUrl, {
-                        headers: authHeaders,
-                        mode: 'cors'
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.blob();
-                    })
-                    .then(blob => {
-                        const objectUrl = URL.createObjectURL(blob);
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous'; // Add CORS header
-                        
-                        img.onload = () => {
-                            console.log(`Flux model image generated successfully: ${width}x${height}`);
-                            // Verify the loaded image dimensions match what we requested
-                            console.log(`Actual image dimensions: ${img.width}x${img.height}`);
-                            resolve(objectUrl);
-                        };
-                        
-                        img.onerror = (error) => {
-                            console.error('Flux model image loading failed:', error);
-                            URL.revokeObjectURL(objectUrl);
-                            reject(new Error('Failed to load generated image'));
-                        };
-                        
-                        img.src = objectUrl;
-                    })
-                    .catch(error => {
-                        console.error('Flux model image generation failed:', error);
-                        
-                        // Try alternative URL format as fallback
-                        const fallbackUrl = `https://pollinations.ai/api/p/${imagePrompt}?width=${width}&height=${height}&seed=${seed}&model=${model}&quality=${quality}&nologo=${nologo}`;
-                        console.log('Trying fallback URL:', fallbackUrl);
-                        
-                        return fetch(fallbackUrl, {
-                            headers: authHeaders,
-                            mode: 'cors'
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error(`HTTP error! status: ${response.status}`);
-                            }
-                            return response.blob();
-                        })
-                        .then(blob => {
-                            const objectUrl = URL.createObjectURL(blob);
-                            const fallbackImg = new Image();
-                            fallbackImg.crossOrigin = 'anonymous';
-                            
-                            fallbackImg.onload = () => {
-                                console.log(`Fallback image generated successfully: ${width}x${height}`);
-                                resolve(objectUrl);
-                            };
-                            
-                            fallbackImg.onerror = (fallbackError) => {
-                                console.error('Fallback image loading failed:', fallbackError);
-                                URL.revokeObjectURL(objectUrl);
-                                reject(new Error('Flux model image generation failed - please check prompt and parameters'));
-                            };
-                            
-                            fallbackImg.src = objectUrl;
-                        })
-                        .catch(fallbackError => {
-                            console.error('Fallback image generation also failed:', fallbackError);
-                            reject(new Error('All image generation attempts failed'));
-                        });
-                    });
-                });
-                
-                // Set timeout for the entire operation
-                const timeoutId = setTimeout(() => {
-                    reject(new Error('Flux model image generation timeout'));
-                }, 30000);
-                
-                // If this is a retry, log the attempt
-                if (retryCount > 0) {
-                    console.log(`Retry attempt ${retryCount}/${maxRetries} for image generation...`);
-                    // Update progress with retry information
-                    this.updateProgress('image', 'processing', `Retry ${retryCount}/${maxRetries} for image ${seed + 1}...`);
-                }
-                
-                // Clear timeout when promise resolves or rejects
-                return result.then(
-                    (value) => {
-                        clearTimeout(timeoutId);
-                        return value;
-                    },
-                    (error) => {
-                        clearTimeout(timeoutId);
-                        throw error;
-                    }
-                );
-                
-                // Note: The result is already being returned by the promise chain above
-                
             } catch (error) {
-                lastError = error;
-                retryCount++;
-                
-                // Log the failure with retry information
-                console.warn(`Image generation attempt ${retryCount}/${maxRetries} failed:`, error.message);
-                
-                if (retryCount < maxRetries) {
-                    // Wait before retrying (exponential backoff)
-                    const backoffTime = 2000 * Math.pow(2, retryCount - 1); // 2s, 4s, 8s...
-                    console.log(`Waiting ${backoffTime}ms before retry ${retryCount + 1}...`);
-                    await this.delay(backoffTime);
-                }
+                console.log(`Endpoint failed: ${endpoint}`);
             }
         }
-        
-        // If we've exhausted all retries, throw the last error
-        console.error(`Material processing failed after ${maxRetries} attempts for image with prompt: "${prompt.substring(0, 50)}..."`);
-        throw new Error(`Failed to generate image after ${maxRetries} attempts: ${lastError.message}`);
+
+        // If none of the endpoints returned a valid response, signal failure to the caller.
+        throw new Error('All image generation attempts failed');
     }
     
     /**
@@ -586,6 +444,33 @@ class VideoGeneratorApp {
             this.fluxConfig.nologo = qualitySettings.nologo !== undefined ? qualitySettings.nologo : true;
             console.log(`Flux quality updated to: ${qualityLevel}`, qualitySettings);
         }
+    }
+
+    /**
+     * Clean a prompt string by removing HTML tags and other unwanted fragments.
+     * This helps avoid corrupt prompts being sent to the image generation API.
+     *
+     * @param {string} prompt - The original prompt
+     * @returns {string} - A sanitized prompt suitable for API calls
+     */
+    cleanPrompt(prompt) {
+        // Remove HTML tags and entities
+        let cleaned = prompt
+            .replace(/<[^>]*>/g, '')        // Strip HTML tags
+            .replace(/&[^;]+;/g, ' ')       // Replace HTML entities with spaces
+            .replace(/doctype\s+html/gi, '') // Remove doctype declarations
+            .replace(/charset[^,\s]*/gi, '') // Remove charset definitions
+            .replace(/viewport[^,\s]*/gi, '')// Remove viewport meta tags
+            .replace(/maximum-scale[^,\s]*/gi, '') // Remove scale directives
+            .replace(/\s+/g, ' ')          // Normalize whitespace
+            .trim();
+
+        // Fallback to a generic artistic prompt if the result looks invalid
+        if (cleaned.length < 5 || cleaned.includes('meta') || cleaned.includes('property')) {
+            cleaned = 'beautiful landscape, artistic masterpiece, vibrant colors, professional photography';
+        }
+
+        return cleaned;
     }
 
     createImagePrompts(script, count) {
@@ -1184,3 +1069,153 @@ window.addEventListener('unhandledrejection', (event) => {
         window.videoApp.showError('An unexpected error occurred. Please try again.');
     }
 });
+
+// -----------------------------------------------------------------------------
+// Additional helper classes for image generation
+//
+// The following classes provide alternative approaches to image generation
+// through Pollinations. The PollinationsProxy class is useful during
+// development when CORS restrictions prevent direct API calls from a local
+// environment. It prefixes requests with a proxy URL to circumvent the
+// browser's preflight checks. The ProductionImageGenerator class offers a
+// simplified interface for production environments where CORS is not an
+// issue. Both classes sanitize prompts using a cleanPrompt method to avoid
+// sending malformed HTML or metadata to the API.
+
+/**
+ * Development proxy solution for Pollinations image generation.
+ *
+ * Use this class when running the application from a local server. It
+ * automatically routes requests through a proxy to avoid CORS issues and
+ * generates image URLs that can be used directly in <img> tags.
+ */
+class PollinationsProxy {
+    constructor() {
+        // Base proxy URL; this service forwards requests and handles CORS
+        this.proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+        // Base API URL for Pollinations images
+        this.baseUrl = 'https://image.pollinations.ai/prompt/';
+    }
+
+    /**
+     * Generate an image URL via the proxy.
+     *
+     * @param {string} prompt - The raw prompt for image generation
+     * @param {Object} options - Additional query parameters (width, height, seed, model, etc.)
+     * @returns {Promise<string>} - A URL string pointing to the generated image
+     */
+    async generateImage(prompt, options = {}) {
+        const cleanPrompt = this.cleanPrompt(prompt);
+        const params = new URLSearchParams({
+            width: options.width || 720,
+            height: options.height || 1280,
+            seed: options.seed || Math.floor(Math.random() * 1000000),
+            model: options.model || 'flux',
+            quality: 'best',
+            nologo: 'true'
+        });
+
+        const url = `${this.proxyUrl}${this.baseUrl}${encodeURIComponent(cleanPrompt)}?${params}`;
+
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                // Strip the proxy prefix before returning so the returned URL can
+                // be used directly in an <img> tag.
+                return url.replace(this.proxyUrl, '');
+            }
+            throw new Error(`HTTP ${response.status}`);
+        } catch (error) {
+            console.error('Proxy generation failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Remove HTML tags and entities from the prompt. If the result is empty or
+     * suspicious, provide a generic fallback prompt.
+     *
+     * @param {string} prompt - The original prompt
+     * @returns {string} - A sanitized prompt
+     */
+    cleanPrompt(prompt) {
+        const sanitized = prompt.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
+        return sanitized || 'artistic masterpiece';
+    }
+}
+
+/**
+ * Production-ready image generator for Pollinations.
+ *
+ * This class is intended for use in production environments where CORS is
+ * properly configured on the server. It asynchronously preloads an image
+ * using a standard <img> element and returns the final URL upon success.
+ */
+class ProductionImageGenerator {
+    constructor() {
+        this.baseUrl = 'https://image.pollinations.ai/prompt/';
+    }
+
+    /**
+     * Generate an image and return a URL that can be used directly in the DOM.
+     *
+     * @param {string} prompt - The raw prompt to generate an image from
+     * @param {Object} options - Additional query parameters (width, height, seed, model, etc.)
+     * @returns {Promise<string>} - The URL of the generated image
+     */
+    async generateImage(prompt, options = {}) {
+        const cleanPrompt = this.sanitizePrompt(prompt);
+
+        const url = this.buildUrl(cleanPrompt, options);
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(url);
+            img.onerror = () => resolve(this.getFallbackUrl(options));
+            img.src = url;
+        });
+    }
+
+    /**
+     * Construct the full request URL with the provided options.
+     */
+    buildUrl(prompt, options) {
+        const params = {
+            width: options.width || 720,
+            height: options.height || 1280,
+            seed: options.seed || Date.now(),
+            model: options.model || 'flux',
+            nologo: 'true'
+        };
+        const queryString = Object.entries(params)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('&');
+        return `${this.baseUrl}${encodeURIComponent(prompt)}?${queryString}`;
+    }
+
+    /**
+     * Sanitize the prompt by removing HTML and unwanted metadata. Provide a
+     * reasonable fallback when necessary.
+     */
+    sanitizePrompt(prompt) {
+        return prompt
+            .replace(/<[^>]*>/g, '')
+            .replace(/&[a-zA-Z0-9#]+;/g, ' ')
+            .replace(/doctype|html|meta|charset|viewport/gi, '')
+            .replace(/[^\w\s,.-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim() || 'beautiful artistic scene';
+    }
+
+    /**
+     * Provide a fallback URL in case image generation fails. This uses a
+     * generic prompt to ensure that some image always loads.
+     */
+    getFallbackUrl(options) {
+        return this.buildUrl('stunning digital art masterpiece', options);
+    }
+}
+
+// Expose the helper classes globally so they can be accessed from HTML if needed
+window.PollinationsProxy = PollinationsProxy;
+window.ProductionImageGenerator = ProductionImageGenerator;
